@@ -1,0 +1,24 @@
+let
+    FetchWorkItemSummary = (workItemId as text) as table =>
+    let
+        // Compose the request URL with API version
+        EndpointUrl = "https://dev.azure.com/DEVOPSORG/DEVOPSPROJECT/_apis/wit/workitems/" & workItemId & "?api-version=7.1-preview.3",
+        
+        // Attempt to retrieve JSON data from Azure DevOps
+        RawResponse = try Json.Document(VSTS.Contents(EndpointUrl)) otherwise error "No details for ID " & workItemId,
+        
+        // Verify expected structure
+        HasFieldsSection = if Record.HasFields(RawResponse, "fields") then RawResponse[fields] else error "Missing 'fields' data for item " & workItemId,
+        
+        // Pull out specific fields
+        TaskPriority = Record.FieldOrDefault(HasFieldsSection, "Microsoft.VSTS.Common.Priority", null),
+        TaskDescription = Record.FieldOrDefault(HasFieldsSection, "System.Description", null),
+
+        // Convert to a table format
+        Output = Table.FromRecords({
+            [Priority = TaskPriority, Description = TaskDescription]
+        })
+    in
+        Output
+in
+    FetchWorkItemSummary
